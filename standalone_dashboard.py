@@ -907,10 +907,32 @@ class ReusableTCPServer(socketserver.TCPServer):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         super().server_bind()
 
+import socket
+import time
+
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+    def server_bind(self):
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        super().server_bind()
+
 if __name__ == '__main__':
     init_and_seed_db()
-    with ReusableTCPServer(("", PORT), DashboardHandler) as httpd:
-        print("================================================================================")
-        print(f"  SENTINEL COMPLIANCE OS — MASTER RUNNING AT PORT: {PORT}")
-        print("================================================================================")
-        httpd.serve_forever()
+    
+    server = None
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            server = ReusableTCPServer(("", PORT), DashboardHandler)
+            break
+        except OSError as e:
+            if e.errno == 98 and attempt < max_retries - 1:
+                print(f"⚠️ Port {PORT} in use, retrying in 2 seconds (Attempt {attempt+1}/{max_retries})...")
+                time.sleep(2)
+            else:
+                raise e
+
+    print("================================================================================")
+    print(f"  SENTINEL COMPLIANCE OS — MASTER RUNNING AT PORT: {PORT}")
+    print("================================================================================")
+    server.serve_forever()
