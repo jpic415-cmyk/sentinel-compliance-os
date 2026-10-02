@@ -17,28 +17,29 @@ if not api_key:
 else:
     client = genai.Client(api_key=api_key)
 
-    # Sidebar Navigation for Department Operations
+    # Sidebar Navigation for Full Department Operations
     st.sidebar.title("🛡️ Sentinel Compliance OS")
-    st.sidebar.markdown("### Municipal & Operational Hub")
+    st.sidebar.markdown("### Department Operations & Command Hub")
     st.sidebar.markdown("---")
     
     module = st.sidebar.radio(
         "Select Operation Module", 
         [
-            "📋 PA 23-116 & Compliance Query", 
-            "📜 Administrative Directive Builder", 
-            "🚗 LPR & Traffic Enforcement Protocol", 
-            "⚖️ Operational Document Review & Audit"
+            "📋 Municipal Compliance & Statutes", 
+            "🎓 FTO / DTO Program & Recruit Tracking", 
+            "🎯 Department Training & Certifications", 
+            "🏢 Facility & Equipment Operations",
+            "📜 Administrative Directive Builder"
         ]
     )
 
-    if module == "📋 PA 23-116 & Compliance Query":
-        st.subheader("📋 Public Act 23-116 & Municipal Compliance Engine")
-        st.markdown("Query statutory mandates, traffic enforcement guidelines, data retention rules, and municipal standard operating procedures.")
+    if module == "📋 Municipal Compliance & Statutes":
+        st.subheader("📋 Public Act & Municipal Compliance Engine")
+        st.markdown("Query statutory mandates, traffic enforcement guidelines, data retention rules, and standard operating procedures.")
         
         user_query = st.text_area(
             "Enter compliance question or statute reference:", 
-            placeholder="e.g., What are the mandatory 30-day grace period and review requirements under Public Act 23-116 for automated safety devices?"
+            placeholder="e.g., What are the mandatory requirements and review protocols under Public Act 23-116?"
         )
         
         if st.button("Generate Regulatory Analysis"):
@@ -47,7 +48,7 @@ else:
                     try:
                         response = client.models.generate_content(
                             model='gemini-3.8-flash',
-                            contents=f"Act as an expert municipal police administrator and legal compliance officer in Connecticut. Provide a precise, structured analysis referencing relevant statutes like PA 23-116 for: {user_query}",
+                            contents=f"Act as an expert municipal police administrator and legal compliance officer in Connecticut. Provide a precise, structured analysis referencing relevant statutes for: {user_query}",
                         )
                         st.success("Analysis Complete")
                         st.markdown(response.text)
@@ -55,7 +56,105 @@ else:
                         st.error(f"An error occurred: {e}")
             else:
                 st.warning("Please enter a query first.")
-                
+
+    elif module == "🎓 FTO / DTO Program & Recruit Tracking":
+        st.subheader("🎓 Field Training Officer (FTO) & DTO Program Manager")
+        st.markdown("Manage recruit performance, Daily Observation Reports (DORs), remediation tracking, and phase evaluations.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            recruit_name = st.text_input("Recruit Officer Name / ID:")
+            training_phase = st.selectbox("Training Phase", ["Phase 1 (Orientation/Shadow)", "Phase 2 (Core Application)", "Phase 3 (Advanced/Shadowing)", "Phase 4 (Ghost Phase / Final Evaluation)"])
+        with col2:
+            fto_name = st.text_input("Assigned FTO / DTO Name:")
+            evaluation_focus = st.selectbox("Primary Evaluation Category", ["Officer Safety & Mechanics", "Radio Communications & Code Knowledge", "Report Writing & Documentation", "Decision Making & Problem Solving", "Physical/Tactical Proficiency"])
+
+        performance_notes = st.text_area(
+            "Daily Observation Notes / Remedial Areas:", 
+            placeholder="Document specific performance markers, remediation steps, or notable strengths..."
+        )
+
+        if st.button("Generate FTO Evaluation Summary & Guidance"):
+            if recruit_name.strip() and performance_notes.strip():
+                with st.spinner("Synthesizing training evaluation..."):
+                    try:
+                        prompt = f"Act as an expert FTO Program Coordinator. Review the following notes for Recruit {recruit_name} in {training_phase} under FTO {fto_name} focusing on {evaluation_focus}: \n\n{performance_notes}. Provide structured Daily Observation Report (DOR) feedback, remedial training recommendations if applicable, and objective grading guidance."
+                        response = client.models.generate_content(
+                            model='gemini-3.8-flash',
+                            contents=prompt,
+                        )
+                        st.success("FTO Evaluation Compiled")
+                        st.markdown(response.text)
+                    except Exception as e:
+                        st.error(f"An error occurred: {e}")
+            else:
+                st.warning("Please enter recruit name and performance notes.")
+
+    elif module == "🎯 Department Training & Certifications":
+        st.subheader("🎯 Department Training & POST Certification Tracking")
+        st.markdown("Monitor instructor certifications, mandatory review cycles, tactical training logs, and Incident Command System (ICS) compliance.")
+        
+        training_category = st.selectbox(
+            "Training Domain",
+            [
+                "Connecticut P.O.S.T. Mandatory Compliance",
+                "Field Training / Instructor Development",
+                "Advanced Incident Command System (ICS-300 / ICS-400 / IS-700 / IS-800)",
+                "Tactical, Defensive Tactics & Firearms Qualification",
+                "Specialized Program In-Service Training"
+            ]
+        )
+        
+        training_details = st.text_area(
+            "Training Objectives, Roster, or Curriculum Notes:", 
+            placeholder="Enter training schedule, attendee counts, or compliance tracking requirements..."
+        )
+
+        if st.button("Generate Training / Compliance Plan"):
+            with st.spinner("Generating training framework..."):
+                try:
+                    prompt = f"Create a comprehensive municipal department training plan and compliance checklist for: {training_category}. Context provided: {training_details}. Ensure alignment with state certification standards and risk management protocols."
+                    response = client.models.generate_content(
+                        model='gemini-3.8-flash',
+                        contents=prompt,
+                    )
+                    st.success("Training Framework Generated")
+                    st.markdown(response.text)
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+
+    elif module == "🏢 Facility & Equipment Operations":
+        st.subheader("🏢 Facility Security, Fleet & Equipment Management")
+        st.markdown("Manage facility hardware specifications, NVR/IP camera infrastructure (Honeywell, Hikvision, Amcrest), fleet logistics, and equipment maintenance logs.")
+        
+        eq_module = st.selectbox(
+            "Operational Asset",
+            [
+                "Security Hardware & NVR / IP Camera Integration",
+                "Vehicle Fleet & Special Equipment Readiness",
+                "Facility Maintenance & Infrastructure Audit",
+                "Automated License Plate Reader (LPR) Infrastructure"
+            ]
+        )
+        
+        eq_notes = st.text_area(
+            "Equipment Specs, Issue Log, or Deployment Scope:", 
+            placeholder="Enter camera channels, hardware models, maintenance intervals, or upgrade parameters..."
+        )
+
+        if st.button("Generate Operational Asset Report"):
+            with st.spinner("Compiling equipment and facility report..."):
+                try:
+                    prompt = f"Act as an administrative operations commander. Draft a professional technical assessment, maintenance schedule, or operational deployment guideline for: {eq_module}. Details: {eq_notes}"
+                    response = client.models.generate_content(
+                        model='gemini-3.8-flash',
+                        contents=prompt,
+                    )
+                    st.success("Asset Report Generated")
+                    st.markdown(response.text)
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+
     elif module == "📜 Administrative Directive Builder":
         st.subheader("📜 Department Directive & Policy Builder")
         st.markdown("Draft formal municipal administrative memos, general orders, FTO/DTO protocols, and standard operating procedures.")
@@ -64,7 +163,7 @@ else:
         with col1:
             directive_type = st.selectbox(
                 "Directive Classification", 
-                ["General Order", "Administrative Memorandum", "Training Bulletin", "Field Training/DTO Protocol"]
+                ["General Order", "Administrative Memorandum", "Training Bulletin", "Field Training / DTO Protocol"]
             )
         with col2:
             subject = st.text_input("Directive Subject / Title:", placeholder="e.g., Field Training Officer Program Guidelines")
@@ -89,60 +188,3 @@ else:
                         st.error(f"An error occurred: {e}")
             else:
                 st.warning("Please specify a subject for the directive.")
-
-    elif module == "🚗 LPR & Traffic Enforcement Protocol":
-        st.subheader("🚗 LPR & Automated Traffic Enforcement Safety (ATESD)")
-        st.markdown("Generate specialized procurement proposals, ordinance frameworks, data privacy policies, and deployment protocols compliant with CT DOT guidelines.")
-        
-        lpr_option = st.selectbox(
-            "Select Protocol Focus",
-            [
-                "Flock Safety LPR & Camera Deployment Proposal",
-                "Automated Traffic Enforcement Safety Device (ATESD) Ordinance Template",
-                "Data Privacy, FOIA, and Retention Protocol (CGS § 1-200)",
-                "School Zone Speed Enforcement & Warning Period Workflow"
-            ]
-        )
-        
-        context_notes = st.text_area(
-            "Specific location data or custom department notes:", 
-            placeholder="e.g., Target school zone corridors, specific speed thresholds (10+ mph over limit), etc."
-        )
-
-        if st.button("Generate LPR / Traffic Protocol"):
-            with st.spinner("Compiling administrative protocol..."):
-                try:
-                    prompt = f"Draft a comprehensive, legally rigorous municipal police document for: {lpr_option}. Local context provided: {context_notes}. Ensure strict alignment with Connecticut statutory requirements and DOT standards."
-                    response = client.models.generate_content(
-                        model='gemini-3.8-flash',
-                        contents=prompt,
-                    )
-                    st.success("Protocol Generated")
-                    st.markdown(response.text)
-                except Exception as e:
-                    st.error(f"An error occurred: {e}")
-
-    elif module == "⚖️ Operational Document Review & Audit":
-        st.subheader("⚖️ Operational Document & Proposal Audit")
-        st.markdown("Evaluate draft memos, policy changes, or procurement proposals for administrative liability, operational risk, and regulatory alignment.")
-        
-        doc_text = st.text_area(
-            "Paste draft text, policy, or municipal proposal for review:", 
-            placeholder="Paste text here..."
-        )
-        
-        if st.button("Execute Compliance Audit"):
-            if doc_text.strip():
-                with st.spinner("Running administrative and statutory risk audit..."):
-                    try:
-                        audit_prompt = f"Perform a rigorous municipal administrative and compliance audit on the following text. Identify potential liability points, administrative gaps, and statutory requirements:\n\n{doc_text}"
-                        response = client.models.generate_content(
-                            model='gemini-3.8-flash',
-                            contents=audit_prompt,
-                        )
-                        st.success("Audit Complete")
-                        st.markdown(response.text)
-                    except Exception as e:
-                        st.error(f"An error occurred: {e}")
-            else:
-                st.warning("Please provide text to audit.")
