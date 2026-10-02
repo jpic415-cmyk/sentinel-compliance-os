@@ -892,6 +892,21 @@ class ReusableTCPServer(socketserver.TCPServer):
 class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
+import socket
+
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+    def server_bind(self):
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        super().server_bind()
+import socket
+
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+    def server_bind(self):
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        super().server_bind()
+
 if __name__ == '__main__':
     init_and_seed_db()
     with ReusableTCPServer(("", PORT), DashboardHandler) as httpd:
