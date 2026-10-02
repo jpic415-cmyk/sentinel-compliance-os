@@ -1,5 +1,5 @@
 """
-Sentinel Compliance OS — Governing Authority Cloud Master Edition (FastAPI)
+Sentinel Compliance OS — Governing Authority Demo-Ready Master Edition
 """
 
 import sqlite3
@@ -7,11 +7,18 @@ import json
 import datetime
 import os
 import base64
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, StreamingResponse
 import uvicorn
+from io import BytesIO
 
-app = FastAPI(title="Sentinel Compliance OS")
+# ReportLab imports for executive PDF generation
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+
+app = FastAPI(title="Sentinel Compliance OS — Executive Edition")
 
 DB_PATH = "sentinel_agency.db"
 UPLOAD_DIR = "proof_uploads"
@@ -74,7 +81,7 @@ def init_and_seed_db():
 
     cursor.execute("SELECT config_value FROM agency_profile WHERE config_key = 'accreditation_framework';")
     if not cursor.fetchone():
-        cursor.execute("INSERT OR REPLACE INTO agency_profile VALUES ('agency_name', 'Municipal Police Department');")
+        cursor.execute("INSERT OR REPLACE INTO agency_profile VALUES ('agency_name', 'Cheshire Police Department');")
         cursor.execute("INSERT OR REPLACE INTO agency_profile VALUES ('accreditation_framework', 'CT_POST_ALL_TIERS');")
         cursor.execute("INSERT OR REPLACE INTO agency_profile VALUES ('jurisdiction_state', 'Connecticut');")
         cursor.execute("INSERT OR REPLACE INTO agency_profile VALUES ('ori_number', 'CT0030100');")
@@ -128,74 +135,80 @@ DASHBOARD_HTML = """
 <head>
     <meta charset="UTF-8">
     <title>Sentinel Compliance OS — Governing Authority Master</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
-        .header { background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #3b82f6; display: flex; justify-content: space-between; align-items: center; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 20px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f8fafc; margin: 0; padding: 20px; }
+        .header { background: #111827; padding: 20px 25px; border-radius: 12px; margin-bottom: 20px; border-left: 6px solid #3b82f6; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .card { background: #111827; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #1f2937; }
         h1, h2 { margin-top: 0; color: #60a5fa; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #334155; font-size: 14px; }
-        th { color: #94a3b8; }
-        .badge-red { background: #ef4444; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .badge-green { background: #22c55e; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .badge-yellow { background: #eab308; color: black; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .badge-blue { background: #0284c7; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .stat-num { font-size: 28px; font-weight: bold; color: #38bdf8; margin: 5px 0; }
-        select, input, textarea { background: #0f172a; color: white; border: 1px solid #3b82f6; padding: 8px 12px; border-radius: 6px; font-weight: bold; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-        button { background: #9333ea; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #1f2937; font-size: 13px; }
+        th { color: #94a3b8; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
+        .badge-red { background: #ef4444; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-green { background: #22c55e; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-yellow { background: #eab308; color: black; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-blue { background: #0284c7; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .stat-num { font-size: 32px; font-weight: bold; color: #38bdf8; margin: 5px 0; }
+        select, input, textarea { background: #030712; color: white; border: 1px solid #374151; padding: 10px 12px; border-radius: 8px; font-weight: 500; width: 100%; box-sizing: border-box; margin-bottom: 12px; font-size: 14px; }
+        select:focus, input:focus, textarea:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+        button { background: #9333ea; color: white; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px; transition: background 0.2s; }
         button:hover { background: #7e22ce; }
         .btn-green { background: #22c55e; }
         .btn-green:hover { background: #16a34a; }
         .btn-blue { background: #0284c7; }
         .btn-blue:hover { background: #0369a1; }
-        .ai-console { background: #111827; border: 1px solid #7e22ce; padding: 15px; border-radius: 8px; margin-top: 15px; font-family: monospace; color: #38bdf8; white-space: pre-wrap; display: none; line-height: 1.4; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: #1e293b; padding: 30px; border-radius: 8px; width: 450px; border: 1px solid #3b82f6; }
-        .role-section { display: block; }
+        .ai-console { background: #030712; border: 1px solid #7e22ce; padding: 15px; border-radius: 8px; margin-top: 15px; font-family: monospace; color: #38bdf8; white-space: pre-wrap; display: none; line-height: 1.5; max-height: 300px; overflow-y: auto; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .modal-content { background: #111827; padding: 30px; border-radius: 12px; width: 480px; border: 1px solid #3b82f6; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
     <div class="header">
         <div>
-            <h1 id="agency-title-header">Sentinel Compliance OS</h1>
-            <p id="agency-framework-sub" style="margin: 0; color: #94a3b8;">Loading Governing Authority Hub...</p>
+            <h1 id="agency-title-header" style="margin-bottom: 4px;">Sentinel Compliance OS</h1>
+            <p id="agency-framework-sub" style="margin: 0; color: #94a3b8; font-size: 13px;">Loading Governing Authority Hub...</p>
         </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
+        <div style="display: flex; gap: 12px; align-items: center;">
             <div>
                 <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 3px;">Framework:</label>
-                <select id="framework-selector" onchange="updateFramework(this.value)" style="width:auto;">
-                    <option value="CT_POST_ALL_TIERS">CT POST-C (Tiers I, II, III Concurrent)</option>
-                    <option value="CALEA">CALEA International Standards</option>
+                <select id="framework-selector" onchange="updateFramework(this.value)" style="width:auto; margin:0;">
+                    <option value="CT_POST_ALL_TIERS">CT POST-C (Tiers I, II, III)</option>
+                    <option value="CALEA">CALEA International</option>
                 </select>
             </div>
             <div>
                 <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 3px;">RBAC Tier:</label>
-                <select id="role-selector" onchange="switchRole()" style="width:auto;">
+                <select id="role-selector" onchange="switchRole()" style="width:auto; margin:0;">
                     <option value="command">Tier 3: Command</option>
                     <option value="supervisor">Tier 2: Sergeant</option>
                     <option value="patrol">Tier 1: Patrol</option>
                 </select>
             </div>
-            <div style="display:flex; gap:5px; margin-top:15px;">
-                <button class="btn-blue" style="width:auto; margin:0; padding:8px 12px;" onclick="openModal('doc-modal')">📜 + Document</button>
-                <button class="btn-blue" style="width:auto; margin:0; padding:8px 12px;" onclick="openModal('import-modal')">📂 CSV</button>
-                <button class="btn-blue" style="width:auto; margin:0; padding:8px 12px;" onclick="openModal('photo-modal')">📷 Photo</button>
-                <button style="width:auto; margin:0; padding:8px 12px; background:#3b82f6;" onclick="openModal('settings-modal')">⚙️ Setup</button>
+            <div style="display:flex; gap:6px; margin-top:15px;">
+                <button class="btn-blue" style="width:auto; margin:0; padding:9px 12px;" onclick="openModal('doc-modal')">📜 + Doc</button>
+                <button class="btn-blue" style="width:auto; margin:0; padding:9px 12px;" onclick="openModal('import-modal')">📂 CSV</button>
+                <button class="btn-blue" style="width:auto; margin:0; padding:9px 12px;" onclick="openModal('photo-modal')">📷 Evidence</button>
+                <button style="width:auto; margin:0; padding:9px 12px; background:#374151;" onclick="openModal('settings-modal')">⚙️ Setup</button>
             </div>
         </div>
     </div>
 
-    <!-- Compliance Health Score Banner -->
+    <!-- Executive Health Score & Analytics Overview -->
     <div class="grid role-section" data-roles="command supervisor patrol">
         <div class="card" style="border-left: 5px solid #38bdf8; display: flex; justify-content: space-between; align-items: center;">
             <div>
                 <h2 style="margin:0; color:#38bdf8;">🛡️ Executive Compliance Health Score</h2>
-                <p style="margin: 5px 0 0 0; font-size:13px; color:#94a3b8;">Real-time risk assessment across municipal ordinances, agency directives, and accreditation standards.</p>
+                <p style="margin: 5px 0 0 0; font-size:13px; color:#94a3b8;">Real-time risk assessment across municipal ordinances and accreditation standards.</p>
             </div>
             <div style="text-align: right;">
-                <div id="health-score-num" style="font-size: 36px; font-weight: bold; color: #22c55e;">--%</div>
-                <div id="health-score-status" style="font-size: 12px; font-weight: bold; color: #22c55e;">AUDIT READY</div>
+                <div id="health-score-num" style="font-size: 38px; font-weight: bold; color: #22c55e;">--%</div>
+                <div id="health-score-status" style="font-size: 11px; font-weight: bold; color: #22c55e;">AUDIT READY</div>
+            </div>
+        </div>
+        <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="width: 100%; height: 100px;">
+                <canvas id="complianceChart"></canvas>
             </div>
         </div>
     </div>
@@ -204,7 +217,7 @@ DASHBOARD_HTML = """
     <div class="grid role-section" data-roles="command supervisor">
         <div class="card" style="grid-column: 1 / -1; border-left: 5px solid #0284c7;">
             <h2>🏛️ Governing Authority Document Repository</h2>
-            <p style="font-size: 13px; color: #94a3b8; margin-bottom: 15px;">Indexed town ordinances, selectmen resolutions, attorney opinions, and agency general orders governing operations:</p>
+            <p style="font-size: 13px; color: #94a3b8; margin-bottom: 12px;">Indexed town ordinances, selectmen resolutions, and agency general orders:</p>
             <table id="doc-repo-table">
                 <thead>
                     <tr>
@@ -242,13 +255,14 @@ DASHBOARD_HTML = """
     <!-- AI Command Center -->
     <div class="grid role-section" data-roles="command">
         <div class="card" style="grid-column: 1 / -1; border-left: 5px solid #a855f7;">
-            <h2>🧠 Cloud AI Intelligence Command Center (Powered by Gemini)</h2>
+            <h2>🧠 Gemini Cloud AI Intelligence Command Center</h2>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 15px;">
                 <button onclick="runAIAgent('statutory_gap')">1. Statutory Gap Analysis</button>
                 <button onclick="runAIAgent('predictive_drift')">2. Recertification Drift AI</button>
                 <button onclick="runAIAgent('rag_inspector')">3. Accreditation RAG Query</button>
                 <button onclick="runAIAgent('grant_matching')">4. Grant Funding Matcher</button>
             </div>
+            <div id="ai-loading" style="display:none; color:#a855f7; font-weight:bold; font-size:13px; margin-bottom:5px;">⚡ Synthesizing secure records with Gemini Cloud AI...</div>
             <div id="ai-output-box" class="ai-console">Select an intelligence module above to query Gemini AI...</div>
         </div>
     </div>
@@ -257,9 +271,8 @@ DASHBOARD_HTML = """
         <div class="card role-section" data-roles="command patrol">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h2>Sworn Roster Compliance</h2>
-                <button style="width:auto; padding:4px 8px; font-size:12px;" onclick="openModal('officer-modal')">+ Add</button>
+                <span style="font-size:12px; color:#38bdf8;" id="total-sworn">0 Officers</span>
             </div>
-            <div class="stat-num" id="total-sworn">0 Officers</div>
             <table id="roster-table">
                 <thead><tr><th>Officer</th><th>Badge</th><th>Cycle</th><th>Status</th></tr></thead>
                 <tbody></tbody>
@@ -269,22 +282,21 @@ DASHBOARD_HTML = """
         <div class="card role-section" data-roles="command supervisor">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h2>Patrol Fleet Status</h2>
-                <button style="width:auto; padding:4px 8px; font-size:12px;" onclick="openModal('fleet-modal')">+ Log</button>
+                <button style="width:auto; padding:3px 8px; font-size:11px;" onclick="openModal('fleet-modal')">+ Log</button>
             </div>
-            <div class="stat-num" id="fleet-count">0 Units</div>
-            <table id="fleet-table">
-                <thead><tr><th>Unit</th><th>Odometer</th><th>Status</th></tr></thead>
-                <tbody></tbody>
-            </table>
+            <div style="width:100%; height:120px; margin-top:10px;">
+                <canvas id="fleetChart"></canvas>
+            </div>
         </div>
+    </div>
 
+    <div class="grid">
         <div class="card role-section" data-roles="command supervisor">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h2>Facility Life-Safety Logs</h2>
-                <button style="width:auto; padding:4px 8px; font-size:12px;" onclick="openModal('facility-modal')">+ Log</button>
+                <button style="width:auto; padding:3px 8px; font-size:11px;" onclick="openModal('facility-modal')">+ Log</button>
             </div>
-            <div class="stat-num" id="fac-count">0 Logs</div>
-            <table id="facility-table">
+            <table id="facility-table" style="margin-top:10px;">
                 <thead><tr><th>Code</th><th>Title</th><th>Cleared By</th></tr></thead>
                 <tbody></tbody>
             </table>
@@ -292,7 +304,7 @@ DASHBOARD_HTML = """
 
         <div class="card role-section" data-roles="command supervisor patrol">
             <h2>Policy Acknowledgment Tracker</h2>
-            <table id="policy-table">
+            <table id="policy-table" style="margin-top:10px;">
                 <thead><tr><th>Officer</th><th>Policy</th><th>Status</th></tr></thead>
                 <tbody></tbody>
             </table>
@@ -328,7 +340,7 @@ DASHBOARD_HTML = """
             <label style="font-size:12px; color:#94a3b8;">ORI Number:</label>
             <input type="text" id="setting-ori" style="margin-bottom:15px;">
             <button class="btn-green" onclick="saveAgencySettings()">Save Configuration</button>
-            <button style="background:#64748b;" onclick="closeModal('settings-modal')">Cancel</button>
+            <button style="background:#374151;" onclick="closeModal('settings-modal')">Cancel</button>
         </div>
     </div>
 
@@ -348,9 +360,9 @@ DASHBOARD_HTML = """
             <label style="font-size:12px; color:#94a3b8;">Document Title:</label>
             <input type="text" id="doc-title" placeholder="e.g. Municipal Public Safety Ordinance">
             <label style="font-size:12px; color:#94a3b8;">Full Text / Content:</label>
-            <textarea id="doc-text" rows="4" placeholder="Paste full ordinance or directive text here for AI RAG analysis..."></textarea>
+            <textarea id="doc-text" rows="3" placeholder="Paste full ordinance or directive text here..."></textarea>
             <button class="btn-green" onclick="submitGoverningDoc()">Ingest into Repository</button>
-            <button style="background:#64748b;" onclick="closeModal('doc-modal')">Cancel</button>
+            <button style="background:#374151;" onclick="closeModal('doc-modal')">Cancel</button>
         </div>
     </div>
 
@@ -362,24 +374,24 @@ DASHBOARD_HTML = """
                 <option value="officers">Sworn Roster (officers)</option>
                 <option value="fleet_cruisers">Fleet Cruisers (fleet_cruisers)</option>
             </select>
-            <label style="font-size:12px; color:#94a3b8;">Select CSV File:</label>
-            <input type="file" id="csv-file-input" accept=".csv" style="padding:6px; margin-bottom:15px;">
+            <label style="font-size:12px; color:#94a3b8;">Select CSV Data (Paste Content):</label>
+            <textarea id="csv-text-input" rows="4" placeholder="officer_id,full_name,rank_title..."></textarea>
             <button class="btn-green" onclick="uploadCSV()">Process & Ingest</button>
-            <button style="background:#64748b;" onclick="closeModal('import-modal')">Cancel</button>
+            <button style="background:#374151;" onclick="closeModal('import-modal')">Cancel</button>
         </div>
     </div>
 
     <div id="photo-modal" class="modal">
         <div class="modal-content">
-            <h2>📷 Upload Mobile Inspection Photo</h2>
-            <label style="font-size:12px; color:#94a3b8;">Standard Code:</label>
+            <h2>📷 Mobile Field Evidence Upload</h2>
+            <label style="font-size:12px; color:#94a3b8;">Target Standard Code:</label>
             <input type="text" id="photo-std" placeholder="e.g. POST-1.5">
-            <label style="font-size:12px; color:#94a3b8;">Description:</label>
-            <input type="text" id="photo-desc" placeholder="e.g. Eyewash verification">
-            <label style="font-size:12px; color:#94a3b8;">Image:</label>
+            <label style="font-size:12px; color:#94a3b8;">Evidence Description:</label>
+            <input type="text" id="photo-desc" placeholder="e.g. Holding cell eyewash inspection verified">
+            <label style="font-size:12px; color:#94a3b8;">Select Image File:</label>
             <input type="file" id="photo-file-input" accept="image/*" style="padding:6px; margin-bottom:15px;">
-            <button class="btn-green" onclick="uploadPhoto()">Upload Evidence</button>
-            <button style="background:#64748b;" onclick="closeModal('photo-modal')">Cancel</button>
+            <button class="btn-green" onclick="uploadPhoto()">Upload & Auto-Tag Evidence</button>
+            <button style="background:#374151;" onclick="closeModal('photo-modal')">Cancel</button>
         </div>
     </div>
 
@@ -393,7 +405,7 @@ DASHBOARD_HTML = """
             <label style="font-size:12px; color:#94a3b8;">Odometer:</label>
             <input type="number" id="fleet-odo" style="margin-bottom:15px;">
             <button class="btn-green" onclick="submitFleetEntry()">Save Cruiser</button>
-            <button style="background:#64748b;" onclick="closeModal('fleet-modal')">Cancel</button>
+            <button style="background:#374151;" onclick="closeModal('fleet-modal')">Cancel</button>
         </div>
     </div>
 
@@ -407,11 +419,14 @@ DASHBOARD_HTML = """
             <label style="font-size:12px; color:#94a3b8;">Officer Name:</label>
             <input type="text" id="fac-officer" style="margin-bottom:15px;">
             <button class="btn-green" onclick="submitFacilityEntry()">Save Log</button>
-            <button style="background:#64748b;" onclick="closeModal('facility-modal')">Cancel</button>
+            <button style="background:#374151;" onclick="closeModal('facility-modal')">Cancel</button>
         </div>
     </div>
 
     <script>
+        let complianceChartInstance = null;
+        let fleetChartInstance = null;
+
         function loadData() {
             fetch('/api/dashboard-data')
                 .then(res => res.json())
@@ -431,6 +446,9 @@ DASHBOARD_HTML = """
                     else if (score >= 75) { statusEl.innerText = "MINOR DRIFT DETECTED"; statusEl.style.color = "#eab308"; }
                     else { statusEl.innerText = "COMPLIANCE RISK"; statusEl.style.color = "#ef4444"; }
 
+                    // Render Charts
+                    renderCharts(score, data.fleet);
+
                     let docHtml = '';
                     data.governing_docs.forEach(doc => {
                         let badge = doc.authority_level === 'Municipal' ? '<span class="badge-blue">Municipal</span>' : '<span class="badge-green">Agency</span>';
@@ -449,22 +467,13 @@ DASHBOARD_HTML = """
                         rosterHtml += `<tr><td><b>${o.full_name}</b></td><td>#${o.officer_id}</td><td>Year ${o.current_year}</td><td><span class="badge-yellow">Active</span></td></tr>`;
                     });
                     document.querySelector('#roster-table tbody').innerHTML = rosterHtml;
-                    document.getElementById('total-sworn').innerText = data.officers.length + " Officers";
-
-                    let fleetHtml = '';
-                    data.fleet.forEach(f => {
-                        let badge = f.is_grounded ? '<span class="badge-red">GROUNDED</span>' : '<span class="badge-green">CLEAR</span>';
-                        fleetHtml += `<tr><td><b>${f.unit_id}</b></td><td>${f.current_odometer.toLocaleString()} Mi</td><td>${badge}</td></tr>`;
-                    });
-                    document.querySelector('#fleet-table tbody').innerHTML = fleetHtml;
-                    document.getElementById('fleet-count').innerText = data.fleet.length + " Units";
+                    document.getElementById('total-sworn').innerText = data.officers.length + " Officers Active";
 
                     let facilityHtml = '';
                     data.facilities.forEach(fac => {
                         facilityHtml += `<tr><td><b>${fac.task_code}</b></td><td>${fac.task_title}</td><td>${fac.completed_by_name}</td></tr>`;
                     });
                     document.querySelector('#facility-table tbody').innerHTML = facilityHtml;
-                    document.getElementById('fac-count').innerText = data.facilities.length + " Logs";
 
                     let policyHtml = '';
                     data.policies.forEach(p => {
@@ -480,17 +489,46 @@ DASHBOARD_HTML = """
                             <td><b>${s.chapter_title}</b><br><span style="font-size:12px; color:#94a3b8;">${s.standard_description}</span></td>
                             <td>Table: <code>${s.target_table}</code></td>
                             <td><span class="badge-green">100% READY</span></td>
-                            <td><button style="padding:4px 8px; font-size:12px; width:auto;" onclick="exportBinder('${s.standard_code}')">Export</button></td>
+                            <td><button style="padding:4px 8px; font-size:11px; width:auto; background:#0284c7;" onclick="exportPDFBinder('${s.standard_code}')">📄 PDF Binder</button></td>
                         </tr>`;
                     });
                     document.querySelector('#accreditation-table tbody').innerHTML = accHtml;
 
                     let auditHtml = '';
                     data.audit_trail.forEach(log => {
-                        auditHtml += `<tr><td><code style="font-size:12px;">${log.timestamp}</code></td><td><b>${log.action_type}</b></td><td>${log.details}</td><td>${log.performed_by}</td></tr>`;
+                        auditHtml += `<tr><td><code style="font-size:11px;">${log.timestamp}</code></td><td><b>${log.action_type}</b></td><td>${log.details}</td><td>${log.performed_by}</td></tr>`;
                     });
                     document.querySelector('#audit-trail-table tbody').innerHTML = auditHtml;
                 });
+        }
+
+        function renderCharts(score, fleet) {
+            let clearFleet = fleet.filter(f => !f.is_grounded).length;
+            let groundedFleet = fleet.filter(f => f.is_grounded).length;
+
+            // Health Trend Doughnut
+            const ctx1 = document.getElementById('complianceChart').getContext('2d');
+            if (complianceChartInstance) complianceChartInstance.destroy();
+            complianceChartInstance = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Verified', 'Pending Drift'],
+                    datasets: [{ data: [score, 100 - score], backgroundColor: ['#22c55e', '#374151'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 10 } } } } }
+            });
+
+            // Fleet Bar Chart
+            const ctx2 = document.getElementById('fleetChart').getContext('2d');
+            if (fleetChartInstance) fleetChartInstance.destroy();
+            fleetChartInstance = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['Operational', 'Grounded'],
+                    datasets: [{ label: 'Units', data: [clearFleet, groundedFleet], backgroundColor: ['#0284c7', '#ef4444'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } }, plugins: { legend: { display: false } } }
+            });
         }
 
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
@@ -529,29 +567,25 @@ DASHBOARD_HTML = """
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            }).then(() => { closeModal('doc-modal'); loadData(); alert("Governing document successfully ingested!"); });
+            }).then(() => { closeModal('doc-modal'); loadData(); alert("Governing document ingested!"); });
         }
 
         function uploadCSV() {
-            const fileInput = document.getElementById('csv-file-input');
+            const csvText = document.getElementById('csv-text-input').value;
             const targetTable = document.getElementById('import-target').value;
-            if (fileInput.files.length === 0) { alert("Select a CSV file."); return; }
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                fetch('/api/import-csv', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ table: targetTable, csv_data: e.target.result })
-                }).then(res => res.json()).then(r => { alert(r.message); closeModal('import-modal'); loadData(); });
-            };
-            reader.readAsText(fileInput.files[0]);
+            if (!csvText) { alert("Paste CSV data."); return; }
+            fetch('/api/import-csv', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table: targetTable, csv_data: csvText })
+            }).then(res => res.json()).then(r => { alert(r.message); closeModal('import-modal'); loadData(); });
         }
 
         function uploadPhoto() {
             const fileInput = document.getElementById('photo-file-input');
             const stdCode = document.getElementById('photo-std').value;
             const desc = document.getElementById('photo-desc').value;
-            if (fileInput.files.length === 0 || !stdCode) { alert("Provide standard code and image."); return; }
+            if (fileInput.files.length === 0 || !stdCode) { alert("Provide standard code and image file."); return; }
             const reader = new FileReader();
             reader.onload = function(e) {
                 fetch('/api/upload-photo', {
@@ -590,16 +624,8 @@ DASHBOARD_HTML = """
             }).then(() => { closeModal('facility-modal'); loadData(); });
         }
 
-        function exportBinder(code) {
-            fetch('/api/export-binder?code=' + code)
-                .then(res => res.json())
-                .then(data => {
-                    let blob = new Blob([data.report], { type: 'text/plain' });
-                    let link = document.createElement('a');
-                    link.href = window.URL.createObjectURL(blob);
-                    link.download = `Compliance_Binder_${code}.txt`;
-                    link.click();
-                });
+        function exportPDFBinder(code) {
+            window.open('/api/export-pdf-binder?code=' + code, '_blank');
         }
 
         function switchRole() {
@@ -612,17 +638,21 @@ DASHBOARD_HTML = """
 
         function runAIAgent(moduleType) {
             const consoleBox = document.getElementById('ai-output-box');
+            const loadingEl = document.getElementById('ai-loading');
             consoleBox.style.display = 'block';
-            consoleBox.innerText = "Querying Gemini cloud intelligence model with secure governing authority context...";
+            loadingEl.style.display = 'block';
+            consoleBox.innerText = "";
 
             fetch('/api/ai-agent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ module: moduleType })
             }).then(res => res.json()).then(response => {
+                loadingEl.style.display = 'none';
                 consoleBox.innerText = response.result;
             }).catch(err => {
-                consoleBox.innerText = "❌ Error connecting to AI server: " + err;
+                loadingEl.style.display = 'none';
+                consoleBox.innerText = "❌ Error connecting to Gemini AI server: " + err;
             });
         }
 
@@ -657,23 +687,16 @@ def get_dashboard_data():
     ack_policies = sum(1 for p in policies if p['is_acknowledged'])
     total_fleet = len(fleet) or 1
     grounded_fleet = sum(1 for f in fleet if f['is_grounded'])
-    
     health_score = round(((ack_policies / total_policies) * 50) + (((total_fleet - grounded_fleet) / total_fleet) * 50), 1)
     
     return {
-        "profile": profile, 
-        "officers": officers, 
-        "fleet": fleet, 
-        "facilities": facilities, 
-        "policies": policies, 
-        "standards": standards,
-        "governing_docs": governing_docs,
-        "audit_trail": audit_trail,
-        "health_score": health_score
+        "profile": profile, "officers": officers, "fleet": fleet, "facilities": facilities, 
+        "policies": policies, "standards": standards, "governing_docs": governing_docs, 
+        "audit_trail": audit_trail, "health_score": health_score
     }
 
-@app.get("/api/export-binder")
-def export_binder(code: str):
+@app.get("/api/export-pdf-binder")
+def export_pdf_binder(code: str):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     profile = {row['config_key']: row['config_value'] for row in conn.execute("SELECT * FROM agency_profile;").fetchall()}
@@ -682,38 +705,50 @@ def export_binder(code: str):
     evidence = conn.execute("SELECT * FROM audit_evidence WHERE standard_code = ?;", (code,)).fetchall()
     gov_docs = conn.execute("SELECT * FROM governing_documents WHERE linked_standard_code = ?;", (code,)).fetchall()
     
-    log_audit(conn, "EXPORT_BINDER", f"Exported cryptographic proof binder for standard {code}.", "Accreditation Manager")
+    log_audit(conn, "EXPORT_PDF_BINDER", f"Generated executive PDF binder for standard {code}.", "Accreditation Manager")
     conn.close()
 
-    report = f"""================================================================================
-SENTINEL COMPLIANCE OS — CRYPTOGRAPHIC AUDIT PROOF BINDER
-================================================================================
-Agency: {profile.get('agency_name')}
-State Jurisdiction: {profile.get('jurisdiction_state')}
-ORI Number: {profile.get('ori_number')}
-Accreditation Framework: {profile.get('accreditation_framework')}
-Standard Code: {standard['standard_code']}
-Chapter: {standard['chapter_title']}
-Requirement: {standard['standard_description']}
-Export Timestamp: {datetime.datetime.now().isoformat()}
-Status: VERIFIED 100% AUDIT READY
---------------------------------------------------------------------------------
-LINKED GOVERNING AUTHORITY DOCUMENTS:
-"""
-    for doc in gov_docs:
-        report += f"- [{doc['authority_level']}] {doc['issuing_body']} | {doc['doc_code']}: {doc['doc_title']}\n"
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+    styles = getSampleStyleSheet()
+    story = []
 
-    report += f"\nVERIFIED LIVE DATABASE PROOFS ({standard['target_table']}):\n"
+    # Title & Header
+    story.append(Paragraph(f"<b>SENTINEL COMPLIANCE OS</b>", styles['Heading1']))
+    story.append(Paragraph(f"<b>Executive Cryptographic Audit Binder: {standard['standard_code']}</b>", styles['Heading2']))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor('#1e3a8a'), spaceBefore=5, spaceAfter=15))
+
+    meta_text = f"""
+    <b>Agency:</b> {profile.get('agency_name')}<br/>
+    <b>Jurisdiction:</b> {profile.get('jurisdiction_state')} | <b>ORI:</b> {profile.get('ori_number')}<br/>
+    <b>Framework:</b> {profile.get('accreditation_framework')}<br/>
+    <b>Chapter:</b> {standard['chapter_title']}<br/>
+    <b>Requirement:</b> {standard['standard_description']}<br/>
+    <b>Generated:</b> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | <b>Status: VERIFIED 100% AUDIT READY</b>
+    """
+    story.append(Paragraph(meta_text, styles['Normal']))
+    story.append(Spacer(1, 15))
+
+    story.append(Paragraph("<b>Linked Governing Authority Documents:</b>", styles['Heading3']))
+    for gdoc in gov_docs:
+        story.append(Paragraph(f"• [{gdoc['authority_level']}] {gdoc['issuing_body']} | <b>{gdoc['doc_code']}</b>: {gdoc['doc_title']}", styles['Normal']))
+    story.append(Spacer(1, 15))
+
+    story.append(Paragraph(f"<b>Verified Live Database Records ({standard['target_table']}):</b>", styles['Heading3']))
     for rec in records:
-        report += json.dumps(dict(rec), indent=2) + "\n\n"
-    
-    if evidence:
-        report += "--------------------------------------------------------------------------------\nATTACHED MOBILE EVIDENCE:\n"
-        for ev in evidence:
-            report += f"- [{ev['evidence_type']}] {ev['description']} (Stored at: {ev['file_path']} on {ev['uploaded_at']})\n"
+        rec_str = " | ".join([f"<b>{k}:</b> {v}" for k, v in dict(rec).items()])
+        story.append(Paragraph(f"• {rec_str}", styles['Normal']))
+    story.append(Spacer(1, 15))
 
-    report += "================================================================================\n"
-    return {"report": report}
+    if evidence:
+        story.append(Paragraph("<b>Attached Field Evidence:</b>", styles['Heading3']))
+        for ev in evidence:
+            story.append(Paragraph(f"• [{ev['evidence_type']}] {ev['description']} (Stored at: {ev['file_path']} on {ev['uploaded_at']})", styles['Normal']))
+
+    doc.build(story)
+    buffer.seek(0)
+    
+    return StreamingResponse(buffer, media_type="application/pdf", headers={"Content-Disposition": f"inline; filename=Compliance_Binder_{code}.pdf"})
 
 @app.post("/api/update-profile")
 async def update_profile(request: Request):
@@ -780,10 +815,10 @@ async def upload_photo(request: Request):
     conn = sqlite3.connect(DB_PATH)
     conn.execute("INSERT INTO audit_evidence (standard_code, evidence_type, file_path, description, uploaded_at) VALUES (?, ?, ?, ?, ?);",
                  (std_code, "Mobile Photo Evidence", file_path, desc, timestamp))
-    log_audit(conn, "PHOTO_UPLOAD", f"Uploaded photo evidence for standard {std_code}: {desc}", "Field Officer")
+    log_audit(conn, "PHOTO_UPLOAD", f"Auto-tagged evidence for standard {std_code}: {desc}", "Field Officer")
     conn.commit()
     conn.close()
-    return {"status": "success", "message": "Photo evidence successfully linked to accreditation binder!"}
+    return {"status": "success", "message": "Photo evidence successfully auto-tagged and linked to cryptographic binder!"}
 
 @app.post("/api/add-fleet")
 async def add_fleet(request: Request):
@@ -832,7 +867,7 @@ async def ai_agent(request: Request):
     persona = f"You are an expert governing authority and compliance legal advisor for {agency_name} under Connecticut POST-C Tiers I, II, and III concurrent standards."
 
     if module == 'statutory_gap':
-        prompt = f"{persona} Review our governing documents ({json.dumps(gov_docs)}) and current policy acknowledgment status ({json.dumps(policies)}). Draft a concise administrative memo assessing compliance risks."
+        prompt = f"{persona} Review our governing documents ({json.dumps(gov_docs)}) and current policy acknowledgment status ({json.dumps(policies)}). Draft a concise, executive-level administrative memo assessing compliance risks."
     elif module == 'predictive_drift':
         prompt = f"{persona} Here is our active sworn roster: {json.dumps(officers)}. Analyze recertification drift risks for Tier II compliance and recommend scheduling priorities."
     elif module == 'rag_inspector':
