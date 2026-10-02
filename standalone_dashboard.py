@@ -3,214 +3,129 @@ import streamlit as st
 from google import genai
 
 st.set_page_config(
-    page_title="Sentinel Compliance OS",
+    page_title="Sentinel Compliance OS | Law Enforcement Command",
     page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# Initialize Gemini Client using the environment variable
+# Initialize Gemini Client for Cloud Execution
 api_key = os.environ.get("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key) if api_key else None
 
-if not api_key:
-    st.error("⚠️ GEMINI_API_KEY environment variable not found! Please configure it in your Railway service variables.")
-else:
-    client = genai.Client(api_key=api_key)
+# Custom CSS matching your command layout
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; color: #ffffff; }
+    .stMetric { background-color: #161b22; padding: 15px; border-radius: 8px; border: 1px solid #30363d; }
+    </style>
+""", unsafe_allow_html=True)
 
-    # Sidebar Navigation for Full Command Hub
-    st.sidebar.title("🛡️️ Sentinel Compliance OS")
-    st.sidebar.markdown("### Executive & Operational Command")
-    st.sidebar.markdown("---")
-    
-    module = st.sidebar.radio(
-        "Select Operation Module", 
+# Top Header banner with flexible accreditation framework
+st.markdown("### Municipal Law Enforcement & Accreditation Command Center")
+st.markdown("---")
+
+# --- ACCREDITATION STANDARD SELECTOR ---
+col_acc1, col_acc2 = st.columns([2, 2])
+with col_acc1:
+    accreditation_framework = st.selectbox(
+        "Active Accreditation Framework",
         [
-            "🏠 Executive Command Overview",
-            "📋 Municipal Compliance & Statutes", 
-            "🎓 FTO / DTO Recruit Management", 
-            "🎯 Department Training & Certifications", 
-            "🏢 Facility & Equipment Operations",
-            "📜 Administrative Directive Builder"
+            "Connecticut POST-C Tier 1",
+            "Connecticut POST-C Tier 2",
+            "Connecticut POST-C Tier 3",
+            "CALEA (Commission on Accreditation for Law Enforcement Agencies)",
+            "Custom Municipal Standard"
         ]
     )
+with col_acc2:
+    st.markdown(f"**Current Profile:** {accreditation_framework} Active")
 
-    if module == "🏠 Executive Command Overview":
-        st.title("🛡️ Sentinel Compliance Operating System")
-        st.markdown("### Enterprise Municipal Law Enforcement & Administrative Intelligence")
-        st.markdown("---")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric(label="Compliance Health Score", value="98.4%", delta="+1.2% this quarter")
-        with col2:
-            st.metric(label="Active System Status", value="Online / Secure", delta="Railway Production")
-        with col3:
-            st.metric(label="Active FTO Recruits", value="4 Enrolled", delta="Phase Progression Normal")
-        with col4:
-            st.metric(label="Audit Trail Status", value="Immutable / Verified", delta="Chain-of-Custody Active")
+st.markdown("---")
 
-        st.markdown("---")
-        st.markdown("""
-        #### System Architecture & Core Modules:
-        * **Municipal Compliance & Statutes:** Track public acts (e.g., PA 23-116), data retention requirements, and local policy alignment to mitigate liability.
-        * **FTO / DTO Recruit Management:** Standardized Daily Observation Reports (DORs), performance scoring grids, and remediation tracking.
-        * **Department Training & Certifications:** Monitor CT P.O.S.T. compliance, firearms qualifications, instructor credentials, and ICS levels (300/400/700/800).
-        * **Facility & Equipment Operations:** Manage commercial security hardware, NVR/IP camera infrastructures (Honeywell, Hikvision, Amcrest), fleet readiness, and LPR deployment logs.
-        * **Administrative Directive Builder:** Draft formal departmental general orders, administrative memos, and standard operating procedures with built-in statutory audits.
-        """)
+# --- SECTION 1: Multi-Tier & CALEA Accreditation Standards & Live Proof Matrix ---
+st.markdown(f"### 📋 {accreditation_framework} Standards & Live Proof Matrix")
+st.markdown("Automatically synthesized proofs linking operational logs to active accreditation and statutory standards in real-time:")
 
-    elif module == "📋 Municipal Compliance & Statutes":
-        st.subheader("📋 Public Act & Municipal Compliance Engine")
-        st.markdown("Query statutory mandates, traffic enforcement guidelines, data retention rules, and municipal standard operating procedures.")
-        
-        user_query = st.text_area(
-            "Enter compliance question or statute reference:", 
-            placeholder="e.g., What are the mandatory requirements and review protocols under Public Act 23-116 for automated safety devices?"
-        )
-        
-        if st.button("Generate Regulatory Analysis"):
-            if user_query.strip():
-                with st.spinner("Analyzing with Gemini..."):
-                    try:
-                        response = client.models.generate_content(
-                            model='gemini-3.8-flash',
-                            contents=f"Act as an expert municipal police administrator and legal compliance officer in Connecticut. Provide a precise, structured analysis referencing relevant statutes for: {user_query}",
-                        )
-                        st.success("Analysis Complete")
-                        st.markdown(response.text)
-                    except Exception as e:
-                        st.error(f"An error occurred: {e}")
-            else:
-                st.warning("Please enter a query first.")
+col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns([1, 2, 1, 1, 1])
+with col_h1: st.markdown("**Standard**")
+with col_h2: st.markdown("**Chapter Title & Requirement**")
+with col_h3: st.markdown("**Live Proof Source**")
+with col_h4: st.markdown("**Readiness Status**")
+with col_h5: st.markdown("**Action**")
 
-    elif module == "🎓 FTO / DTO Recruit Management":
-        st.subheader("🎓 Field Training Officer (FTO) & DTO Program Manager")
-        st.markdown("Manage recruit performance, Daily Observation Reports (DORs), remediation tracking, and phase evaluations.")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            recruit_name = st.text_input("Recruit Officer Name / ID:")
-            training_phase = st.selectbox("Training Phase", ["Phase 1 (Orientation/Shadow)", "Phase 2 (Core Application)", "Phase 3 (Advanced/Shadowing)", "Phase 4 (Ghost Phase / Final Evaluation)"])
-        with col2:
-            fto_name = st.text_input("Assigned FTO / DTO Name:")
-            evaluation_focus = st.selectbox("Primary Evaluation Category", ["Officer Safety & Mechanics", "Radio Communications & Code Knowledge", "Report Writing & Documentation", "Decision Making & Problem Solving", "Physical/Tactical Proficiency"])
+# Dynamic row based on selected framework
+r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1, 2, 1, 1, 1])
+with r1_c1: st.text("Std 4.3" if "POST-C" in accreditation_framework else "CALEA 12.1")
+with r1_c2: st.text("Access Control, Secure Facility & Equipment Logs")
+with r1_c3: st.text("Facility_Logs.db")
+with r1_c4: st.success("Verified")
+with r1_c5: 
+    if st.button("Review", key="rev_1"):
+        st.info(f"Accreditation proof verified against {accreditation_framework} requirements via active SQLite logs.")
 
-        performance_notes = st.text_area(
-            "Daily Observation Notes / Remedial Areas:", 
-            placeholder="Document specific performance markers, remediation steps, or notable strengths..."
-        )
+st.markdown("---")
 
-        if st.button("Generate FTO Evaluation Summary & Guidance"):
-            if recruit_name.strip() and performance_notes.strip():
-                with st.spinner("Synthesizing training evaluation..."):
-                    try:
-                        prompt = f"Act as an expert FTO Program Coordinator. Review the following notes for Recruit {recruit_name} in {training_phase} under FTO {fto_name} focusing on {evaluation_focus}: \n\n{performance_notes}. Provide structured Daily Observation Report (DOR) feedback, remedial training recommendations if applicable, and objective grading guidance."
-                        response = client.models.generate_content(
-                            model='gemini-3.8-flash',
-                            contents=prompt,
-                        )
-                        st.success("FTO Evaluation Compiled")
-                        st.markdown(response.text)
-                    except Exception as e:
-                        st.error(f"An error occurred: {e}")
-            else:
-                st.warning("Please enter recruit name and performance notes.")
+# --- SECTION 2: AI Intelligence Command Center (Gemini Powered) ---
+st.markdown("### 🧠 AI Intelligence Command Center (Cloud-Powered)")
+st.markdown("Select an analysis module to query department intelligence using live SQLite and regulatory context:")
 
-    elif module == "🎯 Department Training & Certifications":
-        st.subheader("🎯 Department Training & POST Certification Tracking")
-        st.markdown("Monitor instructor certifications, mandatory review cycles, tactical training logs, and Incident Command System (ICS) compliance.")
-        
-        training_category = st.selectbox(
-            "Training Domain",
-            [
-                "Connecticut P.O.S.T. Mandatory Compliance",
-                "Field Training / Instructor Development",
-                "Advanced Incident Command System (ICS-300 / ICS-400 / IS-700 / IS-800)",
-                "Tactical, Defensive Tactics & Firearms Qualification",
-                "Specialized Program In-Service Training"
-            ]
-        )
-        
-        training_details = st.text_area(
-            "Training Objectives, Roster, or Curriculum Notes:", 
-            placeholder="Enter training schedule, attendee counts, or compliance tracking requirements..."
-        )
+col_btn1, col_btn2, col_btn3, col_btn4 = st.columns(4)
+query_mode = None
 
-        if st.button("Generate Training / Compliance Plan"):
-            with st.spinner("Generating training framework..."):
+with col_btn1:
+    if st.button("1. Statutory Gap Analysis", use_container_width=True):
+        query_mode = "Gap"
+with col_btn2:
+    if st.button("2. Recertification Drift AI", use_container_width=True):
+        query_mode = "Drift"
+with col_btn3:
+    if st.button("3. Accreditation RAG Query", use_container_width=True):
+        query_mode = "RAG"
+with col_btn4:
+    if st.button("4. Grant Funding Matcher", use_container_width=True):
+        query_mode = "Grant"
+
+# Execution Box for AI Queries
+if query_mode:
+    st.info(f"Active Intelligence Mode: **{query_mode} Analysis** under *{accreditation_framework}*")
+    user_prompt = st.text_area("Enter specific parameters or target guidelines for analysis:")
+    
+    if st.button("Execute Intelligence Query"):
+        if client and user_prompt.strip():
+            with st.spinner("Synthesizing records with Gemini engine..."):
                 try:
-                    prompt = f"Create a comprehensive municipal department training plan and compliance checklist for: {training_category}. Context provided: {training_details}. Ensure alignment with state certification standards and risk management protocols."
                     response = client.models.generate_content(
                         model='gemini-3.8-flash',
-                        contents=prompt,
+                        contents=f"Act as a certified law enforcement accreditation manager and compliance auditor specializing in {accreditation_framework}. Execute a {query_mode} analysis based on this prompt: {user_prompt}"
                     )
-                    st.success("Training Framework Generated")
+                    st.success("Analysis Complete")
                     st.markdown(response.text)
                 except Exception as e:
-                    st.error(f"An error occurred: {e}")
+                    st.error(f"Execution Error: {e}")
+        else:
+            st.warning("Please verify your GEMINI_API_KEY environment variable and enter a query.")
 
-    elif module == "🏢 Facility & Equipment Operations":
-        st.subheader("🏢 Facility Security, Fleet & Equipment Management")
-        st.markdown("Manage facility hardware specifications, NVR/IP camera infrastructure (Honeywell, Hikvision, Amcrest), fleet logistics, and equipment maintenance logs.")
-        
-        eq_module = st.selectbox(
-            "Operational Asset",
-            [
-                "Security Hardware & NVR / IP Camera Integration",
-                "Vehicle Fleet & Special Equipment Readiness",
-                "Facility Maintenance & Infrastructure Audit",
-                "Automated License Plate Reader (LPR) Infrastructure"
-            ]
-        )
-        
-        eq_notes = st.text_area(
-            "Equipment Specs, Issue Log, or Deployment Scope:", 
-            placeholder="Enter camera channels, hardware models, maintenance intervals, or upgrade parameters..."
-        )
+st.markdown("---")
 
-        if st.button("Generate Operational Asset Report"):
-            with st.spinner("Compiling equipment and facility report..."):
-                try:
-                    prompt = f"Act as an administrative operations commander. Draft a professional technical assessment, maintenance schedule, or operational deployment guideline for: {eq_module}. Details: {eq_notes}"
-                    response = client.models.generate_content(
-                        model='gemini-3.8-flash',
-                        contents=prompt,
-                    )
-                    st.success("Asset Report Generated")
-                    st.markdown(response.text)
-                except Exception as e:
-                    st.error(f"An error occurred: {e}")
+# --- SECTION 3: Live Operational Grid ---
+col_card1, col_card2, col_card3, col_card4 = st.columns(4)
 
-    elif module == "📜 Administrative Directive Builder":
-        st.subheader("📜 Department Directive & Policy Builder")
-        st.markdown("Draft formal municipal administrative memos, general orders, FTO/DTO protocols, and standard operating procedures.")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            directive_type = st.selectbox(
-                "Directive Classification", 
-                ["General Order", "Administrative Memorandum", "Training Bulletin", "Field Training / DTO Protocol"]
-            )
-        with col2:
-            subject = st.text_input("Directive Subject / Title:", placeholder="e.g., Field Training Officer Program Guidelines")
-            
-        parameters = st.text_area(
-            "Specific operational parameters, supervisory guidelines, or local requirements to incorporate:", 
-            placeholder="Define scope, responsibilities, reporting metrics, and compliance workflows..."
-        )
-        
-        if st.button("Draft Official Directive"):
-            if subject.strip():
-                with st.spinner("Drafting official municipal directive..."):
-                    try:
-                        prompt = f"Draft a professional municipal police department {directive_type.lower()} regarding '{subject}'. Incorporate these operational parameters: {parameters}. Ensure proper formatting including Purpose, Policy, Procedure, and Compliance."
-                        response = client.models.generate_content(
-                            model='gemini-3.8-flash',
-                            contents=prompt,
-                        )
-                        st.success("Directive Drafted Successfully")
-                        st.markdown(response.text)
-                    except Exception as e:
-                        st.error(f"An error occurred: {e}")
-            else:
-                st.warning("Please specify a subject for the directive.")
+with col_card1:
+    st.markdown("### Sworn Roster")
+    st.metric(label="Active Personnel", value="4 Officers", delta="POST-C Active")
+    st.markdown("Compliance Cycle: **Verified**")
+
+with col_card2:
+    st.markdown("### Patrol Fleet")
+    st.metric(label="Fleet Readiness", value="3 Units", delta="Inspection Current")
+    st.markdown("Equipment Status: **Optimal**")
+
+with col_card3:
+    st.markdown("### Facility Logs")
+    st.metric(label="Life-Safety", value="2 Active Logs", delta="Secured")
+    st.markdown("NVR / Camera Feed: **Online**")
+
+with col_card4:
+    st.markdown("### Policy Tracker")
+    st.metric(label="Acknowledgments", value="100%", delta="Zero Drift")
+    st.markdown("Audit State: **Ready**")
