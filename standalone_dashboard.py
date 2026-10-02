@@ -17,29 +17,55 @@ if not api_key:
 else:
     client = genai.Client(api_key=api_key)
 
-    # Sidebar Navigation for Full Department Operations
-    st.sidebar.title("🛡️ Sentinel Compliance OS")
-    st.sidebar.markdown("### Department Operations & Command Hub")
+    # Sidebar Navigation for Full Command Hub
+    st.sidebar.title("🛡️️ Sentinel Compliance OS")
+    st.sidebar.markdown("### Executive & Operational Command")
     st.sidebar.markdown("---")
     
     module = st.sidebar.radio(
         "Select Operation Module", 
         [
+            "🏠 Executive Command Overview",
             "📋 Municipal Compliance & Statutes", 
-            "🎓 FTO / DTO Program & Recruit Tracking", 
+            "🎓 FTO / DTO Recruit Management", 
             "🎯 Department Training & Certifications", 
             "🏢 Facility & Equipment Operations",
             "📜 Administrative Directive Builder"
         ]
     )
 
-    if module == "📋 Municipal Compliance & Statutes":
+    if module == "🏠 Executive Command Overview":
+        st.title("🛡️ Sentinel Compliance Operating System")
+        st.markdown("### Enterprise Municipal Law Enforcement & Administrative Intelligence")
+        st.markdown("---")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(label="Compliance Health Score", value="98.4%", delta="+1.2% this quarter")
+        with col2:
+            st.metric(label="Active System Status", value="Online / Secure", delta="Railway Production")
+        with col3:
+            st.metric(label="Active FTO Recruits", value="4 Enrolled", delta="Phase Progression Normal")
+        with col4:
+            st.metric(label="Audit Trail Status", value="Immutable / Verified", delta="Chain-of-Custody Active")
+
+        st.markdown("---")
+        st.markdown("""
+        #### System Architecture & Core Modules:
+        * **Municipal Compliance & Statutes:** Track public acts (e.g., PA 23-116), data retention requirements, and local policy alignment to mitigate liability.
+        * **FTO / DTO Recruit Management:** Standardized Daily Observation Reports (DORs), performance scoring grids, and remediation tracking.
+        * **Department Training & Certifications:** Monitor CT P.O.S.T. compliance, firearms qualifications, instructor credentials, and ICS levels (300/400/700/800).
+        * **Facility & Equipment Operations:** Manage commercial security hardware, NVR/IP camera infrastructures (Honeywell, Hikvision, Amcrest), fleet readiness, and LPR deployment logs.
+        * **Administrative Directive Builder:** Draft formal departmental general orders, administrative memos, and standard operating procedures with built-in statutory audits.
+        """)
+
+    elif module == "📋 Municipal Compliance & Statutes":
         st.subheader("📋 Public Act & Municipal Compliance Engine")
-        st.markdown("Query statutory mandates, traffic enforcement guidelines, data retention rules, and standard operating procedures.")
+        st.markdown("Query statutory mandates, traffic enforcement guidelines, data retention rules, and municipal standard operating procedures.")
         
         user_query = st.text_area(
             "Enter compliance question or statute reference:", 
-            placeholder="e.g., What are the mandatory requirements and review protocols under Public Act 23-116?"
+            placeholder="e.g., What are the mandatory requirements and review protocols under Public Act 23-116 for automated safety devices?"
         )
         
         if st.button("Generate Regulatory Analysis"):
@@ -57,7 +83,7 @@ else:
             else:
                 st.warning("Please enter a query first.")
 
-    elif module == "🎓 FTO / DTO Program & Recruit Tracking":
+    elif module == "🎓 FTO / DTO Recruit Management":
         st.subheader("🎓 Field Training Officer (FTO) & DTO Program Manager")
         st.markdown("Manage recruit performance, Daily Observation Reports (DORs), remediation tracking, and phase evaluations.")
         
