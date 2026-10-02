@@ -886,9 +886,15 @@ LINKED GOVERNING AUTHORITY DOCUMENTS:
             self.send_response(404)
             self.end_headers()
 
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
 if __name__ == '__main__':
     init_and_seed_db()
-    with socketserver.TCPServer(("", PORT), DashboardHandler) as httpd:
+    with ReusableTCPServer(("", PORT), DashboardHandler) as httpd:
         print("================================================================================")
         print(f"  SENTINEL COMPLIANCE OS — MASTER RUNNING AT PORT: {PORT}")
         print("================================================================================")
