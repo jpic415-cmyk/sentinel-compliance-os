@@ -27,7 +27,7 @@ else:
                 with st.spinner("Analyzing with Gemini..."):
                     try:
                         response = client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='gemini-3.8-flash',
                             contents=user_prompt,
                         )
                         st.success("Analysis Complete")
@@ -45,7 +45,7 @@ else:
                 with st.spinner("Drafting official directive..."):
                     try:
                         response = client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='gemini-3.8-flash',
                             contents=f"Draft a professional municipal administrative directive or policy regarding: {topic}",
                         )
                         st.success("Directive Drafted")
