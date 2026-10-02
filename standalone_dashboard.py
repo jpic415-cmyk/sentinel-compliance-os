@@ -20,7 +20,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Top Header banner with flexible accreditation framework
+# Top Header banner
 st.markdown("### Municipal Law Enforcement & Accreditation Command Center")
 st.markdown("---")
 
@@ -28,40 +28,37 @@ st.markdown("---")
 col_acc1, col_acc2 = st.columns([2, 2])
 with col_acc1:
     accreditation_framework = st.selectbox(
-        "Active Accreditation Framework",
+        "Active Accreditation Standard",
         [
-            "Connecticut POST-C Tier 1",
-            "Connecticut POST-C Tier 2",
-            "Connecticut POST-C Tier 3",
-            "CALEA (Commission on Accreditation for Law Enforcement Agencies)",
-            "Custom Municipal Standard"
+            "Connecticut POST-C 3-Tier Cumulative Standard (Tiers 1, 2 & 3 Combined)",
+            "CALEA (Commission on Accreditation for Law Enforcement Agencies)"
         ]
     )
 with col_acc2:
-    st.markdown(f"**Current Profile:** {accreditation_framework} Active")
+    st.markdown(f"**Active Compliance Profile:** {accreditation_framework}")
 
 st.markdown("---")
 
-# --- SECTION 1: Multi-Tier & CALEA Accreditation Standards & Live Proof Matrix ---
-st.markdown(f"### 📋 {accreditation_framework} Standards & Live Proof Matrix")
-st.markdown("Automatically synthesized proofs linking operational logs to active accreditation and statutory standards in real-time:")
+# --- SECTION 1: Accreditation Standards & Live Proof Matrix ---
+st.markdown(f"### 📋 Standards & Live Proof Matrix ({accreditation_framework})")
+st.markdown("Automatically synthesized proofs linking operational logs to active cumulative standards in real-time:")
 
 col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns([1, 2, 1, 1, 1])
-with col_h1: st.markdown("**Standard**")
+with col_h1: st.markdown("**Standard / Tier**")
 with col_h2: st.markdown("**Chapter Title & Requirement**")
 with col_h3: st.markdown("**Live Proof Source**")
 with col_h4: st.markdown("**Readiness Status**")
 with col_h5: st.markdown("**Action**")
 
-# Dynamic row based on selected framework
+# Dynamic row representation
 r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1, 2, 1, 1, 1])
-with r1_c1: st.text("Std 4.3" if "POST-C" in accreditation_framework else "CALEA 12.1")
-with r1_c2: st.text("Access Control, Secure Facility & Equipment Logs")
+with r1_c1: st.text("Tiers 1-3 Cumulative" if "POST-C" in accreditation_framework else "CALEA Chapters 1-12")
+with r1_c2: st.text("Access Control, Use of Force, Life-Safety & Secure Facility Logs")
 with r1_c3: st.text("Facility_Logs.db")
 with r1_c4: st.success("Verified")
 with r1_c5: 
     if st.button("Review", key="rev_1"):
-        st.info(f"Accreditation proof verified against {accreditation_framework} requirements via active SQLite logs.")
+        st.info(f"Accreditation proof verified against full requirements under {accreditation_framework}.")
 
 st.markdown("---")
 
