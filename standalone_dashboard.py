@@ -74,7 +74,7 @@ def init_and_seed_db():
 
     cursor.execute("SELECT config_value FROM agency_profile WHERE config_key = 'accreditation_framework';")
     if not cursor.fetchone():
-        cursor.execute("INSERT OR REPLACE INTO agency_profile VALUES ('agency_name', 'Cheshire Police Department');")
+        cursor.execute("INSERT OR REPLACE INTO agency_profile VALUES ('agency_name', 'Municipal Police Department');")
         cursor.execute("INSERT OR REPLACE INTO agency_profile VALUES ('accreditation_framework', 'CT_POST_ALL_TIERS');")
         cursor.execute("INSERT OR REPLACE INTO agency_profile VALUES ('jurisdiction_state', 'Connecticut');")
         cursor.execute("INSERT OR REPLACE INTO agency_profile VALUES ('ori_number', 'CT0030100');")
